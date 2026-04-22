@@ -16,5 +16,18 @@
   "bugs": {
     "url": "https://github.com/NabilRobert/atomic-git/issues"
   },
-  "homepage": "https://github.com/NabilRobert/atomic-git#readme"
+  "homepage": "https://github.com/NabilRobert/atomic-git#readme",
+  "dependencies": {
+    "chokidar": "^5.0.0",
+    "dotenv": "^17.4.2",
+    "execa": "^9.6.1",
+    "openai": "^6.34.0",
+    "simple-git": "^3.36.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  }
 }
