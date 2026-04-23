@@ -3,12 +3,10 @@
   "version": "1.0.0",
   "description": "AI-powered atomic commit machine using SumoPod + RTK token-compressed git commands",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "main.ts",
   "scripts": {
-    "start": "node --loader ts-node/esm src/index.ts",
-    "build": "tsc",
-    "start:built": "node dist/index.js",
-    "dev": "nodemon --exec \"node --loader ts-node/esm src/index.ts\""
+    "start": "node --loader ts-node/esm main.ts",
+    "dev": "nodemon --exec \"node --loader ts-node/esm main.ts\""
   },
   "repository": {
     "type": "git",

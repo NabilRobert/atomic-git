@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     // File Layout
-    "rootDir": "src",
+    "rootDir": ".",
     "outDir": "dist",
 
     // Environment — Node.js ESM
@@ -28,6 +28,6 @@
     "isolatedModules": true,
     "moduleDetection": "force"
   },
-  "include": ["src/**/*"],
+  "include": ["lib/**/*", "main.ts"],
   "exclude": ["node_modules", "dist"]
 }
