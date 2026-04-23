@@ -11,7 +11,7 @@ Token Efficiency: Leverages RTK to prune diff noise (whitespace, lockfiles, boil
 Technical Stack
 Runtime: Node.js (TypeScript via tsx)
 
-Compression: RTK (Rust Token Killer)
+Compression: RTK (Rust Token Killer) (on the way)
 
 AI Gateway: SumoPod (DeepSeek-V3/R1 optimized)
 
