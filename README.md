@@ -38,7 +38,7 @@ Install dependencies and start the daemon:
 
 Bash
 npm install
-npm start
+npm start / npm run dev
 Internal Architecture
 
 1. The Heartbeat (lib/heartbeat.ts)
