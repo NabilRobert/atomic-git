@@ -184,4 +184,4 @@ Run tests (if available) or manually verify the agent's behavior:
 
 ---
 
-**Made with ❤️ by Nabil Robert and AI**
+**Made with ❤️ by Robert and AI**
