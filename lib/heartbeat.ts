@@ -1,23 +1,10 @@
-/**
- * lib/heartbeat.ts
- *
- * The Last Line of Defense.
- *
- * Implements a 30-minute observer loop that:
- *   1. Runs `rtk git status --porcelain` — zero AI cost if nothing changed.
- *   2. If changes exist, processes each file through the domain-aware
- *      commit pipeline (domain-handlers.ts → ai-client.ts).
- *   3. On any per-file failure: unstages the file and logs to agent.log.
- *   4. Never crashes — all errors are caught and the loop continues.
- */
-
 import { execSync } from 'child_process';
 import { appendFileSync } from 'fs';
 import { join } from 'path';
 import { resolveDomain } from './domain-handlers.js';
 import { getCommitMessage, AppEnv } from './ai-client.js';
 
-const INTERVAL_MS     = 30 * 60 * 1000;          // 30 minutes
+const INTERVAL_MS     = 30 * 60 * 1000;          // 30 minutes adjust if needed
 const LOG_FILE        = join(process.cwd(), 'logs', 'agent.log');
 const MAX_LINE_LENGTH = 300;                       // diff line noise threshold
 const MAX_DIFF_CHARS  = 12_000;                   // total diff size cap

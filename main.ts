@@ -1,17 +1,6 @@
-/**
- * main.ts
- *
- * Entry Point — Domain-Aware Observer Agent
- *
- * Loads environment, validates required variables, and starts the heartbeat.
- * This is the only file you need to run: `npx ts-node main.ts`
- */
-
 import 'dotenv/config';
 import { startHeartbeat } from './lib/heartbeat.js';
 import { AppEnv } from './lib/ai-client.js';
-
-// ─── Environment validation ───────────────────────────────────────────────────
 
 const REQUIRED = ['SUMOPOD_API_KEY', 'SUMOPOD_BASE_URL', 'COMMIT_SCOPE'];
 const missing  = REQUIRED.filter((k) => !process.env[k]?.trim());

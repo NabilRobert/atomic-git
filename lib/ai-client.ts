@@ -1,11 +1,3 @@
-/**
- * lib/ai-client.ts
- *
- * SumoPod AI client — "Update, don't rebuild" philosophy.
- * Every call receives a domain-specific context layer from domain-handlers.ts
- * that focuses the model on the file type's conventions.
- */
-
 import OpenAI from 'openai';
 
 export interface AppEnv {
@@ -42,8 +34,7 @@ Types: feat, fix, refactor, style, docs, test, chore, perf, ci, build
 
   try {
     const response = await openai.chat.completions.create({
-      // 2. THE FIX: Ensure this isn't undefined.
-      // If your .env is missing SUMOPOD_MODEL, it will fail again.
+
       model: env.SUMOPOD_MODEL || process.env.SUMOPOD_MODEL || 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
