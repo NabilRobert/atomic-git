@@ -3,7 +3,7 @@
  *
  * Reads modified/untracked files from the target Git repo and
  * commits each one individually with an AI-generated Conventional
- * Commit message via OpenRouter (DeepSeek V3/R1).
+ * Commit message via SumoPod (RTK token-compressed git commands).
  */
 
 import 'dotenv/config';
@@ -17,7 +17,8 @@ import { generateCommitMessage } from './ai.js';
 const env = validateEnv(); // exits process if invalid
 
 const git = (cmd: string): string => {
-  return execSync(cmd, { cwd: env.COMMIT_SCOPE, encoding: 'utf8' }).trim();
+  // All git commands are prefixed with `rtk` for token compression.
+  return execSync(`rtk ${cmd}`, { cwd: env.COMMIT_SCOPE, encoding: 'utf8' }).trim();
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -59,7 +60,7 @@ function unstageFile(file: string): void {
 async function run(): Promise<void> {
   console.log('\n🤖 Atomic Commit Machine starting...');
   console.log(`📂 Repo: ${env.COMMIT_SCOPE}`);
-  console.log(`🧠 Model: ${env.OPENROUTER_MODEL}\n`);
+  console.log(`🔌 Provider: SumoPod (${env.SUMOPOD_BASE_URL})\n`);
 
   const files = getStagedFiles();
 
@@ -80,11 +81,11 @@ async function run(): Promise<void> {
     console.log(`📄 Processing: ${file}`);
 
     try {
-      // 1. Stage the file
-      git(`git add "${file}"`);
+      // 1. Stage the file — quote to handle spaces & special characters
+      git(`git add -- "${file}"`);
       console.log(`   ✔ Staged`);
 
-      // 2. Extract the staged diff
+      // 2. Extract the staged diff via rtk git diff --staged
       const rawDiff = git(`git diff --staged -- "${file}"`);
 
       if (!rawDiff) {
@@ -110,8 +111,7 @@ async function run(): Promise<void> {
       const message = await generateCommitMessage(cleanedDiff, file, env);
       console.log(`   ✔ Message: "${message}"`);
 
-      // 5. Commit
-      // Escape double quotes in the message to avoid shell injection
+      // 5. Commit — escape double-quotes to prevent shell injection
       const safeMessage = message.replace(/"/g, '\\"');
       git(`git commit -m "${safeMessage}"`);
       console.log(`   ✅ Committed successfully.`);

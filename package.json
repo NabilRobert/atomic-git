@@ -1,7 +1,7 @@
 {
   "name": "atomic-git-commit",
   "version": "1.0.0",
-  "description": "AI-powered atomic commit machine using OpenRouter (DeepSeek V3/R1)",
+  "description": "AI-powered atomic commit machine using SumoPod + RTK token-compressed git commands",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -18,8 +18,9 @@
     "git",
     "conventional-commits",
     "ai",
-    "openrouter",
-    "deepseek"
+    "sumopod",
+    "rtk",
+    "atomic-commits"
   ],
   "author": "",
   "license": "ISC",

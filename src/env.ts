@@ -7,9 +7,9 @@
  */
 
 export interface AppEnv {
-  OPENROUTER_API_KEY: string;
+  SUMOPOD_API_KEY: string;
+  SUMOPOD_BASE_URL: string;
   COMMIT_SCOPE: string;
-  OPENROUTER_MODEL: string;
   DIFF_LINE_MAX_LENGTH: number;
   DIFF_MAX_CHARS: number;
 }
@@ -17,9 +17,14 @@ export interface AppEnv {
 export function validateEnv(): AppEnv {
   const errors: string[] = [];
 
-  const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY.trim() === '') {
-    errors.push('OPENROUTER_API_KEY is missing or empty.');
+  const SUMOPOD_API_KEY = process.env.SUMOPOD_API_KEY;
+  if (!SUMOPOD_API_KEY || SUMOPOD_API_KEY.trim() === '') {
+    errors.push('SUMOPOD_API_KEY is missing or empty.');
+  }
+
+  const SUMOPOD_BASE_URL = process.env.SUMOPOD_BASE_URL;
+  if (!SUMOPOD_BASE_URL || SUMOPOD_BASE_URL.trim() === '') {
+    errors.push('SUMOPOD_BASE_URL is missing or empty. Set it to your SumoPod API base URL.');
   }
 
   const COMMIT_SCOPE = process.env.COMMIT_SCOPE;
@@ -34,10 +39,7 @@ export function validateEnv(): AppEnv {
     process.exit(1);
   }
 
-  // Optional variables with defaults
-  const OPENROUTER_MODEL =
-    process.env.OPENROUTER_MODEL?.trim() || 'deepseek/deepseek-chat';
-
+  // Optional diff-tuning variables with sensible defaults
   const DIFF_LINE_MAX_LENGTH = parsePositiveInt(
     process.env.DIFF_LINE_MAX_LENGTH,
     300,
@@ -51,9 +53,9 @@ export function validateEnv(): AppEnv {
   );
 
   return {
-    OPENROUTER_API_KEY: OPENROUTER_API_KEY!,
+    SUMOPOD_API_KEY: SUMOPOD_API_KEY!,
+    SUMOPOD_BASE_URL: SUMOPOD_BASE_URL!,
     COMMIT_SCOPE: COMMIT_SCOPE!,
-    OPENROUTER_MODEL,
     DIFF_LINE_MAX_LENGTH,
     DIFF_MAX_CHARS,
   };
