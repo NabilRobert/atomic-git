@@ -15,7 +15,7 @@ import { execSync } from 'child_process';
 import { appendFileSync } from 'fs';
 import { join } from 'path';
 import { resolveDomain } from './domain-handlers.js';
-import { generateCommitMessage, AppEnv } from './ai-client.js';
+import { getCommitMessage, AppEnv } from './ai-client.js';
 
 const INTERVAL_MS     = 30 * 60 * 1000;          // 30 minutes
 const LOG_FILE        = join(process.cwd(), 'logs', 'agent.log');
@@ -89,7 +89,7 @@ async function runCycle(env: AppEnv): Promise<void> {
       log('INFO', `[${file}] Domain: ${label}`);
 
       // 5. Generate commit message via SumoPod
-      const message = await generateCommitMessage(cleanedDiff, file, context, env);
+      const message = await getCommitMessage(cleanedDiff, file, context, env);
       log('INFO', `[${file}] Message: "${message}"`);
 
       // 6. Commit — escape quotes to prevent shell injection

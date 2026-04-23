@@ -6,33 +6,31 @@
  * that focuses the model on the file type's conventions.
  */
 
+import OpenAI from 'openai';
+
 export interface AppEnv {
   SUMOPOD_API_KEY: string;
   SUMOPOD_BASE_URL: string;
   COMMIT_SCOPE: string;
+  SUMOPOD_MODEL?: string;
 }
 
-interface SumoPodMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
+// 1. Initialize with the exact baseURL
+const openai = new OpenAI({
+  apiKey: process.env.SUMOPOD_API_KEY,
+  baseURL: process.env.SUMOPOD_BASE_URL // Ensure this is 'https://ai.sumopod.com/v1' in .env
+});
 
-interface SumoPodResponse {
-  choices: Array<{
-    message: {
-      content: string;
-    };
-  }>;
-  error?: {
-    message: string;
-    code?: number;
-  };
-}
-
-const BASE_SYSTEM_PROMPT = `You are an expert dev acting as the last line of defense for code quality.
-Analyze the provided git diff. Focus EXCLUSIVELY on the incremental updates — lines added, modified, or removed.
-Do NOT describe or summarize unchanged parts of the file.
-Generate a single Conventional Commit message for this specific delta only.
+/**
+ * Calls SumoPod via the OpenAI SDK and returns a Conventional Commit message for the given diff.
+ */
+export async function getCommitMessage(
+  cleanedDiff: string,
+  filePath: string,
+  domainContext: string,
+  env: AppEnv
+): Promise<string> {
+  const systemPrompt = `You are a Lead Dev. Analyze the git diff. Focus EXCLUSIVELY on updates to what's already there. Update, don't rebuild. Domain: ${domainContext}
 
 Format: <type>(<scope>): <short description>
 Types: feat, fix, refactor, style, docs, test, chore, perf, ci, build
@@ -40,72 +38,29 @@ Types: feat, fix, refactor, style, docs, test, chore, perf, ci, build
 - Description: lowercase, imperative mood, max 72 characters.
 - Output ONLY the commit message string — no body, no footer, no markdown, no quotes.`;
 
-/**
- * Calls SumoPod and returns a Conventional Commit message for the given diff.
- *
- * @param cleanedDiff   - The pre-processed git diff string.
- * @param filePath      - Relative path of the staged file.
- * @param domainContext - Extra instructions from domain-handlers.ts.
- * @param env           - Environment configuration variables.
- * @returns A single commit message string.
- */
-export async function generateCommitMessage(
-  cleanedDiff: string,
-  filePath: string,
-  domainContext: string,
-  env: AppEnv
-): Promise<string> {
-  const baseUrl = env.SUMOPOD_BASE_URL.replace(/\/+$/, '');
-  const endpoint = `${baseUrl}/chat/completions`;
+  const userPrompt = `File: ${filePath}\n\n\`\`\`diff\n${cleanedDiff}\n\`\`\``;
 
-  const systemPrompt = domainContext
-    ? `${BASE_SYSTEM_PROMPT}\n\n${domainContext}`
-    : BASE_SYSTEM_PROMPT;
-
-  const userPrompt =
-    `File: ${filePath}\n\n` +
-    `\`\`\`diff\n${cleanedDiff}\n\`\`\``;
-
-  const body = {
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user',   content: userPrompt },
-    ] satisfies SumoPodMessage[],
-    max_tokens: 120,
-    temperature: 0.2,
-  };
-
-  let response: Response;
   try {
-    response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': env.SUMOPOD_API_KEY,
-        'X-Title': 'Atomic Commit Machine',
-      },
-      body: JSON.stringify(body),
+    const response = await openai.chat.completions.create({
+      // 2. THE FIX: Ensure this isn't undefined.
+      // If your .env is missing SUMOPOD_MODEL, it will fail again.
+      model: env.SUMOPOD_MODEL || process.env.SUMOPOD_MODEL || 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      max_tokens: 150,
+      temperature: 0.1 // Keep it low for consistent conventional commits
     });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`Network error calling SumoPod: ${msg}`);
+
+    const raw = response.choices[0]?.message?.content;
+    if (!raw) throw new Error('SumoPod returned an empty response.');
+
+    return sanitize(raw);
+  } catch (error) {
+    console.error("AI Completion Error:", error);
+    throw error;
   }
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => '(no body)');
-    throw new Error(`SumoPod ${response.status} ${response.statusText}: ${text}`);
-  }
-
-  const data = await response.json() as SumoPodResponse;
-
-  if (data.error) {
-    throw new Error(`SumoPod API error: ${data.error.message}`);
-  }
-
-  const raw = data.choices?.[0]?.message?.content?.trim();
-  if (!raw) throw new Error('SumoPod returned an empty response.');
-
-  return sanitize(raw);
 }
 
 function sanitize(raw: string): string {
