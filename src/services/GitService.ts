@@ -107,12 +107,16 @@ export class GitService {
     return result;
   }
 
-  // ─── Private ─────────────────────────────────────────────────────────────────
-
   /**
    * Runs a git command via the `rtk` token-compression prefix.
+   * shell: true is required on Windows for cross-drive cwd resolution
+   * (e.g. process on C:\ targeting a repo on D:\).
    */
   private rtk(cmd: string, cwd: string): string {
-    return execSync(`rtk ${cmd}`, { cwd, encoding: 'utf8' }).trim();
+    return execSync(`rtk ${cmd}`, {
+      cwd,
+      encoding : 'utf8',
+      shell    : true as any,   // Windows: ensures the drive change is honoured
+    }).trim();
   }
 }

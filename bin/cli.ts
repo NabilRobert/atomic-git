@@ -10,7 +10,7 @@
  *   atomic --status         Show current state + last 3 heartbeat log lines
  */
 
-import { spawnSync }                              from 'child_process';
+import { spawnSync, spawn }                           from 'child_process';
 import { readFileSync, existsSync }               from 'fs';
 import { join, resolve, normalize, dirname }      from 'path';
 import { fileURLToPath }                          from 'url';
@@ -136,6 +136,53 @@ function lastHeartbeatLines(n: number): string[] {
   return lines.slice(-n);
 }
 
+// ─── Log Streamer ─────────────────────────────────────────────────────────────
+
+function streamLogs(): void {
+  console.log(cyan(`\n🚀 Agent Started! Tailing logs... `) + dim(`(Press Ctrl+C to detach terminal — Agent will stay active in background)\n`));
+
+  const child = spawn('npx', ['pm2', 'logs', AGENT_NAME, '--lines', '10', '--format'], {
+    shell: true,
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  const filterAndPrint = (data: Buffer) => {
+    const lines = data.toString().split('\n');
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      
+      // HIDE lines containing [Dormant]
+      if (/\[DORMANT\]/i.test(line)) continue;
+      
+      // SHOW lines with specific tags
+      if (/\[INFO   \]|\[ERROR  \]|\[WARN   \]|\[COMMIT \]|\[INFO\]|\[ERROR\]|\[WARN\]/i.test(line)) {
+        // Apply colors
+        let colored = line
+          .replace(/\[ERROR  \]/ig, red('[ERROR  ]'))
+          .replace(/\[ERROR\]/ig, red('[ERROR]'))
+          .replace(/\[WARN   \]/ig, yellow('[WARN   ]'))
+          .replace(/\[WARN\]/ig, yellow('[WARN]'))
+          .replace(/\[INFO   \]/ig, green('[INFO   ]'))
+          .replace(/\[INFO\]/ig, green('[INFO]'));
+
+        // Highlight commit messages
+        colored = colored.replace(/Message: "(.*?)"/g, `Message: ${cyan('"$1"')}`);
+        colored = colored.replace(/Message: \[Unable to retrieve message\]/g, `Message: ${red('[Unable to retrieve message]')}`);
+        
+        console.log('  ' + colored);
+      }
+    }
+  };
+
+  child.stdout.on('data', filterAndPrint);
+  child.stderr.on('data', filterAndPrint);
+
+  process.on('SIGINT', () => {
+    child.kill('SIGINT');
+    process.exit(0);
+  });
+}
+
 // ─── Commands ─────────────────────────────────────────────────────────────────
 
 function cmdStart(rawPath?: string): void {
@@ -182,7 +229,7 @@ function cmdStart(rawPath?: string): void {
   pm2('set', `${AGENT_NAME}:COMMIT_SCOPE`, dir);
 
   console.log(green(`\n✔ ${bold(AGENT_NAME)} is now ACTIVE.`));
-  console.log(dim(`  Run ${bold('atomic --status')} to monitor it.\n`));
+  streamLogs();
 }
 
 function cmdEnd(): void {
@@ -229,6 +276,7 @@ function cmdRdir(rawPath: string): void {
 
   console.log(green(`\n✔ ${bold(AGENT_NAME)} restarted.`));
   console.log(dim(`  Now watching: ${bold(dir)}\n`));
+  streamLogs();
 }
 
 function cmdStatus(): void {

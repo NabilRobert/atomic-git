@@ -10,14 +10,14 @@
  *  3. The heartbeat never exits the process on a per-cycle error.
  */
 
-import { appendFileSync, mkdirSync } from 'fs';
-import { dirname }                   from 'path';
+import { appendFileSync, existsSync, mkdirSync } from 'fs';
+import { dirname, join }                          from 'path';
 import { AppEnv, CommitAgent }       from './types/index.js';
 import { GitService }                from './services/GitService.js';
 import { AIService }                 from './services/AIService.js';
 import { resolveDomain }             from './services/DomainService.js';
 
-const INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+const INTERVAL_MS = 1 * 60 * 1000; // 30 minutes
 
 export class Observer implements CommitAgent {
   constructor(
@@ -76,11 +76,25 @@ export class Observer implements CommitAgent {
     // ── Process each file atomically ────────────────────────────────────────────
     let committed = 0;
     let skipped   = 0;
+    let lastMessage = '';
+    let aiFailed = false;
 
     for (const file of files) {
+      let staged = false; // guard: only restore if staging succeeded
+
       try {
+        // 0. Pre-flight: verify file still exists on disk
+        //    git status can report stale/deleted entries; staging them throws.
+        const fullPath = join(this.env.COMMIT_SCOPE, file);
+        if (!existsSync(fullPath)) {
+          this.log('INFO', `[${file}] File removed before staging, skipping.`);
+          skipped++;
+          continue;
+        }
+
         // 1. Stage the file
         this.git.stageFile(file, this.env.COMMIT_SCOPE);
+        staged = true;
 
         // 2. Capture staged delta via RTK
         const rawDiff = this.git.getStagedDiff(file, this.env.COMMIT_SCOPE);
@@ -90,6 +104,7 @@ export class Observer implements CommitAgent {
           const msg = `chore: add ${file}`;
           this.git.commit(msg, this.env.COMMIT_SCOPE);
           this.log('INFO', `[${file}] → "${msg}" (no diff content)`);
+          lastMessage = msg;
           committed++;
           continue;
         }
@@ -103,29 +118,46 @@ export class Observer implements CommitAgent {
 
         // 5. Generate commit message via SumoPod (Update, don't rebuild)
         const message = await this.ai.getCommitMessage(cleanedDiff, file, domain);
+        if (!message) {
+          aiFailed = true;
+          throw new Error('AI returned an empty string or malformed message.');
+        }
+
         this.log('INFO', `[${file}] Message: "${message}"`);
 
         // 6. Commit
         this.git.commit(message, this.env.COMMIT_SCOPE);
         this.log('INFO', `[${file}] ✅ Committed.`);
+        lastMessage = message;
         committed++;
 
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         this.log('ERROR', `[${file}] Failed: ${msg}`);
 
-        // Safety: unstage the file to keep the working directory clean
-        try {
-          this.git.unstageFile(file, this.env.COMMIT_SCOPE);
-          this.log('INFO', `[${file}] Unstaged (restored).`);
-        } catch {
-          this.log('WARN', `[${file}] Could not restore staged state.`);
+        // Safety: only attempt restore if the file was actually staged
+        if (staged) {
+          try {
+            this.git.unstageFile(file, this.env.COMMIT_SCOPE);
+            this.log('INFO', `[${file}] Unstaged (restored).`);
+          } catch {
+            this.log('WARN', `[${file}] Could not restore staged state.`);
+          }
         }
         skipped++;
       }
     }
 
-    this.log('INFO', `Cycle complete — committed: ${committed}, skipped: ${skipped}`);
+    let cycleLog = `Cycle complete — committed: ${committed}, skipped: ${skipped}`;
+    if (committed > 0 || aiFailed) {
+      if (aiFailed) {
+        cycleLog += ` | Message: [Unable to retrieve message]`;
+      } else {
+        cycleLog += ` | Message: "${lastMessage}"`;
+      }
+    }
+
+    this.log(aiFailed ? 'WARN' : 'INFO', cycleLog);
   }
 
   /**

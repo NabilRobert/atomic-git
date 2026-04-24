@@ -53,7 +53,7 @@ export class AIService {
     });
 
     const raw = response.choices[0]?.message?.content;
-    if (!raw) throw new Error('SumoPod returned an empty response.');
+    if (!raw) return '';
 
     return this.sanitize(raw);
   }

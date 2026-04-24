@@ -46,12 +46,17 @@ export class ConfigService {
       );
     }
 
-    return {
+    const envConfig: AppEnv = {
       SUMOPOD_API_KEY  : process.env['SUMOPOD_API_KEY']!,
       SUMOPOD_BASE_URL : process.env['SUMOPOD_BASE_URL']!,
       COMMIT_SCOPE     : process.env['COMMIT_SCOPE']!,
-      SUMOPOD_MODEL    : process.env['SUMOPOD_MODEL'],
     };
+    
+    if (process.env['SUMOPOD_MODEL']) {
+      envConfig.SUMOPOD_MODEL = process.env['SUMOPOD_MODEL'];
+    }
+
+    return envConfig;
   }
 
   /**
