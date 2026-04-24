@@ -28,6 +28,6 @@
     "isolatedModules": true,
     "moduleDetection": "force"
   },
-  "include": ["lib/**/*", "main.ts"],
+  "include": ["src/**/*", "bin/**/*"],
   "exclude": ["node_modules", "dist"]
 }

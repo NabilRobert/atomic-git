@@ -1,23 +1,14 @@
 /**
- * lib/domain-handlers.ts
+ * src/services/DomainService.ts
  *
  * Domain-Aware Context Layers.
  *
  * Maps file extensions to domain-specific AI instructions.
- * The returned string is appended to the base system prompt in ai-client.ts,
+ * The returned DomainContext is injected into the AI system prompt,
  * ensuring the model focuses on the conventions that matter for each file type.
  */
 
-export interface DomainHandler {
-  extensions: string[];
-  label: string;
-  context: string;
-}
-
-export interface DomainContext {
-  label: string;
-  context: string;
-}
+import { DomainHandler, DomainContext } from '../types/index.js';
 
 const DOMAIN_REGISTRY: DomainHandler[] = [
   {
@@ -112,31 +103,23 @@ Use "chore" or "build" type.`,
 
 /**
  * Resolves the domain for a given file path.
- *
- * @param filePath - Relative or absolute path to the file.
- * @returns DomainContext containing the label and system prompt injection.
  */
 export function resolveDomain(filePath: string): DomainContext {
-  const ext = getExtension(filePath);
+  const ext     = getExtension(filePath);
   const handler = DOMAIN_REGISTRY.find((h) => h.extensions.includes(ext));
-  
+
   if (handler) {
     return { label: handler.label, context: handler.context };
   }
-  
-  // Fallback: no domain-specific context
+
   return {
-    label: 'Generic',
-    context: 'No specific domain rules apply. Analyze the delta as-is.',
+    label   : 'Generic',
+    context : 'No specific domain rules apply. Analyze the delta as-is.',
   };
 }
 
 /**
- * Extracts the lowercase extension from a file path.
- * Handles double extensions like ".d.ts".
- *
- * @param filePath - Path to extract extension from.
- * @returns e.g. ".ts" | ".vue" | ".py"
+ * Extracts the lowercase extension. Handles double extensions like ".d.ts".
  */
 function getExtension(filePath: string): string {
   if (filePath.endsWith('.d.ts')) return '.d.ts';

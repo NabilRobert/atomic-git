@@ -54,6 +54,17 @@ Logic/TS: Focuses on type definitions and interface changes.
 3. AI Orchestrator (lib/ai-client.ts)
    Communicates with SumoPod. The system prompt is hard-coded to ignore unchanged code and strictly output Conventional Commit headers based on the incremental update.
 
+List of Commands:
+
+in your terminal
+cd to where you have the package installed e.g. d:\Documents\stuff\atomic-git-commit\node_modules\.bin\atomic.cmd
+
+atomic --start [absolute-path] Start the daemon (defaults to .env)
+atomic --end Stop the daemon
+atomic --rdir [absolute-path] Restart with a new working directory
+atomic --status Show current state + last 3 heartbeat log lines
+atomic --help Show help message
+
 Operational Safety
 Automatic Rollback: If a commit fails or the AI response is malformed, the agent executes git restore --staged to prevent workspace corruption.
 
