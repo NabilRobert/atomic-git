@@ -24,7 +24,7 @@ export async function getCommitMessage(
   const systemPrompt = `You are a Lead Dev. Analyze the git diff. Focus EXCLUSIVELY on updates to what's already there. Update, don't rebuild. Domain: ${domainContext}
 
 Format: <type>(<scope>): <short description>
-Types: feat, fix, refactor, style, docs, test, chore, perf, ci, build
+Types: feat, fix, refactor, style, docs, test, chore, perf, ci, build, epic
 - Scope is optional; only add it when the diff targets a clear module/domain.
 - Description: lowercase, imperative mood, max 72 characters.
 - Output ONLY the commit message string — no body, no footer, no markdown, no quotes.`;

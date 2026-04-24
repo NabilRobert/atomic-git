@@ -307,20 +307,41 @@ function cmdStatus(): void {
 
 // ─── CLI entry point ──────────────────────────────────────────────────────────
 
-function printHelp(): void {
+const printHelp = () => {
   console.log(`
-${bold('atomic')} — Atomic Commit Machine CLI
+🛡️  ${bold('Atomic Commit Machine (ACM) — CLI v1.0.0')}
+-------------------------------------------
+A headless observer agent for atomic conventional commits.
 
-${bold('Usage:')}
-  atomic ${cyan('--start')} ${grey('[/path/to/repo]')}   Start the daemon (defaults to .env)
-  atomic ${cyan('--end')}                     Stop the daemon
-  atomic ${cyan('--rdir')} ${grey('<path>')}             Restart with a new directory
-  atomic ${cyan('--status')}                  Show agent status + recent logs
-  atomic ${cyan('--help')}                    Show this help message
-`);
-}
+${bold('USAGE:')}
+  atomic ${cyan('[command]')} ${grey('[options]')}
 
+${bold('COMMANDS:')}
+  ${cyan('--start')} ${grey('[path]')}    🚀 Initialize the observer. Defaults to .env scope.
+  ${cyan('--rdir')} ${grey('<path>')}     🔄 Redirect observer to a new absolute directory path.
+  ${cyan('--status')}          🔍 View current health, directory, and heartbeat logs.
+  ${cyan('--end')}             🛑 Stop and delete the background daemon.
+  ${cyan('--help')}            💡 Show this help menu.
+
+${bold('EXAMPLES:')}
+  atomic ${cyan('--start')} .
+  atomic ${cyan('--rdir')} "C:/Users/MSI/Documents/ProjectB"
+  atomic ${cyan('--status')}
+
+${bold('NOTES:')}
+  • ACM runs as a background process via PM2.
+  • All Git commands are compressed via RTK to save tokens.
+  • Ensure your .env is configured before starting.
+  `);
+};
+
+// Logic to handle empty calls or --help
 const [,, flag, arg] = process.argv;
+
+if (!flag || flag === '--help' || flag === '-h') {
+  printHelp();
+  process.exit(0);
+}
 
 switch (flag) {
   case '--start':
@@ -342,11 +363,6 @@ switch (flag) {
 
   case '--status':
     cmdStatus();
-    break;
-
-  case '--help':
-  case '-h':
-    printHelp();
     break;
 
   default:
