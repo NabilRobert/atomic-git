@@ -7,7 +7,6 @@ export interface AppEnv {
   SUMOPOD_MODEL?: string;
 }
 
-// 1. Initialize with the exact baseURL
 const openai = new OpenAI({
   apiKey: process.env.SUMOPOD_API_KEY,
   baseURL: process.env.SUMOPOD_BASE_URL // Ensure this is 'https://ai.sumopod.com/v1' in .env

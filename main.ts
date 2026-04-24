@@ -18,8 +18,6 @@ const env: AppEnv = {
   COMMIT_SCOPE:     process.env.COMMIT_SCOPE!,
 };
 
-// ─── Banner ───────────────────────────────────────────────────────────────────
-
 console.log(`
 ╔══════════════════════════════════════════════════╗
 ║      🤖  Atomic Commit Machine  — Observer       ║
@@ -29,7 +27,5 @@ console.log(`
   AI     : ${env.SUMOPOD_BASE_URL}
   Cycle  : every 30 minutes
 `);
-
-// ─── Start ────────────────────────────────────────────────────────────────────
 
 startHeartbeat(env);
