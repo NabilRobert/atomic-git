@@ -1,4 +1,6 @@
 /**
+ * bin/cli.ts
+ *
  * atomic CLI — wrapper for managing the atomic-agent daemon via PM2.
  *
  * Commands:
@@ -8,18 +10,24 @@
  *   atomic --status         Show current state + last 3 heartbeat log lines
  */
 
-import { spawnSync }                    from 'child_process';
-import { readFileSync, writeFileSync,
-         existsSync, mkdirSync }        from 'fs';
-import { join, resolve, normalize }     from 'path';
-import { config as loadDotenv }         from 'dotenv';
+import { spawnSync }                              from 'child_process';
+import { readFileSync, existsSync }               from 'fs';
+import { join, resolve, normalize, dirname }      from 'path';
+import { fileURLToPath }                          from 'url';
+import { config as loadDotenv }                   from 'dotenv';
+import { ConfigService }                          from '../src/services/ConfigService.js';
 
 // ─── Paths ────────────────────────────────────────────────────────────────────
+// cli.ts lives in bin/ — walk up one level to reach the project root.
 
-const ROOT       = resolve(import.meta.dirname ?? __dirname);
-const STATE_FILE = join(ROOT, 'logs', 'agent-state.json');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = dirname(__filename);
+const ROOT       = resolve(__dirname, '..');
+
 const LOG_FILE   = join(ROOT, 'logs', 'agent.log');
 const AGENT_NAME = 'atomic-agent';
+
+const configService = new ConfigService();
 
 // ─── Colours (ANSI, zero deps) ────────────────────────────────────────────────
 
@@ -42,31 +50,7 @@ function cyan(s: string)   { return `${C.cyan}${s}${C.reset}`; }
 function grey(s: string)   { return `${C.grey}${s}${C.reset}`; }
 function dim(s: string)    { return `${C.dim}${s}${C.reset}`; }
 
-// ─── State helpers ────────────────────────────────────────────────────────────
-
-interface AgentState {
-  directory: string;
-  startedAt: string;
-}
-
-function readState(): AgentState | null {
-  if (!existsSync(STATE_FILE)) return null;
-  try {
-    return JSON.parse(readFileSync(STATE_FILE, 'utf8')) as AgentState;
-  } catch {
-    return null;
-  }
-}
-
-function writeState(directory: string): void {
-  mkdirSync(join(ROOT, 'logs'), { recursive: true });
-  const state: AgentState = { directory, startedAt: new Date().toISOString() };
-  writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), 'utf8');
-}
-
 // ─── Path normalisation ───────────────────────────────────────────────────────
-// Windows paths like C:\Users\... are kept as-is for the env variable but we
-// normalise separators before storing so cross-platform tooling stays happy.
 
 function normalisePath(raw: string): string {
   return normalize(resolve(raw));
@@ -88,11 +72,11 @@ function pm2(...args: string[]): { stdout: string; stderr: string; ok: boolean }
 }
 
 interface PM2ProcessInfo {
-  name    : string;
-  status  : string;          // 'online' | 'stopped' | 'errored' | …
-  pid     : number | null;
-  uptime  : number;          // ms since PM2 recorded pm_uptime
-  memory  : number;          // bytes
+  name   : string;
+  status : string;
+  pid    : number | null;
+  uptime : number;
+  memory : number;
 }
 
 function getProcessInfo(): PM2ProcessInfo | null {
@@ -111,7 +95,7 @@ function getProcessInfo(): PM2ProcessInfo | null {
   );
   if (!proc) return null;
 
-  const monit = proc['monit'] as Record<string, number> | undefined;
+  const monit  = proc['monit']   as Record<string, number>  | undefined;
   const pm2Env = proc['pm2_env'] as Record<string, unknown> | undefined;
 
   const uptimeMs = pm2Env?.['pm_uptime']
@@ -131,13 +115,13 @@ function getProcessInfo(): PM2ProcessInfo | null {
 
 function formatUptime(ms: number): string {
   if (ms <= 0) return '0s';
-  const s  = Math.floor(ms / 1000);
-  const m  = Math.floor(s / 60);
-  const h  = Math.floor(m / 60);
-  const d  = Math.floor(h / 24);
-  if (d > 0)  return `${d}d ${h % 24}h`;
-  if (h > 0)  return `${h}h ${m % 60}m`;
-  if (m > 0)  return `${m}m ${s % 60}s`;
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  const d = Math.floor(h / 24);
+  if (d > 0) return `${d}d ${h % 24}h`;
+  if (h > 0) return `${h}h ${m % 60}m`;
+  if (m > 0) return `${m}m ${s % 60}s`;
   return `${s}s`;
 }
 
@@ -146,7 +130,6 @@ function formatUptime(ms: number): string {
 function lastHeartbeatLines(n: number): string[] {
   if (!existsSync(LOG_FILE)) return [];
   const raw = readFileSync(LOG_FILE, 'utf8');
-  // Keep only lines that look like heartbeat entries (have our timestamp format)
   const lines = raw
     .split('\n')
     .filter((l) => l.trim().length > 0 && l.startsWith('['));
@@ -156,19 +139,15 @@ function lastHeartbeatLines(n: number): string[] {
 // ─── Commands ─────────────────────────────────────────────────────────────────
 
 function cmdStart(rawPath?: string): void {
-  // Resolve directory: argument > .env COMMIT_SCOPE > error
   let dir: string;
 
   if (rawPath) {
     dir = normalisePath(rawPath);
   } else {
-    // Try to load from .env in the project root
     loadDotenv({ path: join(ROOT, '.env') });
     const scope = process.env['COMMIT_SCOPE'];
     if (!scope?.trim()) {
-      console.error(
-        red('✗ No path provided and COMMIT_SCOPE is not set in .env.')
-      );
+      console.error(red('✗ No path provided and COMMIT_SCOPE is not set in .env.'));
       console.error(dim('  Usage: atomic --start [/absolute/path/to/repo]'));
       process.exit(1);
     }
@@ -178,10 +157,10 @@ function cmdStart(rawPath?: string): void {
   console.log(cyan(`\n⚡ Starting ${bold(AGENT_NAME)}…`));
   console.log(dim(`   Directory : ${dir}`));
 
-  // Stop any existing instance first (graceful restart)
   pm2('delete', AGENT_NAME);
 
-  const entryPoint = join(ROOT, 'main.ts');
+  // Entry point is now src/main.ts
+  const entryPoint = join(ROOT, 'src', 'main.ts');
 
   const { ok, stderr } = pm2(
     'start', entryPoint,
@@ -199,10 +178,7 @@ function cmdStart(rawPath?: string): void {
     process.exit(1);
   }
 
-  // Persist the watched directory so --status / --end can display it
-  writeState(dir);
-
-  // Patch the running environment so main.ts gets the correct COMMIT_SCOPE
+  configService.writeState(dir);
   pm2('set', `${AGENT_NAME}:COMMIT_SCOPE`, dir);
 
   console.log(green(`\n✔ ${bold(AGENT_NAME)} is now ACTIVE.`));
@@ -229,10 +205,9 @@ function cmdRdir(rawPath: string): void {
   console.log(cyan(`\n🔄 Restarting ${bold(AGENT_NAME)} with new directory…`));
   console.log(dim(`   Directory : ${dir}`));
 
-  // Delete → start fresh with new env
   pm2('delete', AGENT_NAME);
 
-  const entryPoint = join(ROOT, 'main.ts');
+  const entryPoint = join(ROOT, 'src', 'main.ts');
 
   const { ok, stderr } = pm2(
     'start', entryPoint,
@@ -249,7 +224,7 @@ function cmdRdir(rawPath: string): void {
     process.exit(1);
   }
 
-  writeState(dir);
+  configService.writeState(dir);
   pm2('set', `${AGENT_NAME}:COMMIT_SCOPE`, dir);
 
   console.log(green(`\n✔ ${bold(AGENT_NAME)} restarted.`));
@@ -258,7 +233,7 @@ function cmdRdir(rawPath: string): void {
 
 function cmdStatus(): void {
   const info  = getProcessInfo();
-  const state = readState();
+  const state = configService.readState();
   const dir   = state?.directory ?? 'unknown';
 
   console.log('\n' + bold('═══════════════════════════════════════'));
@@ -286,7 +261,6 @@ function cmdStatus(): void {
     }
   }
 
-  // ── Heartbeat log tail ──────────────────────────────────────────────────────
   const lines = lastHeartbeatLines(3);
   console.log('\n' + bold('─── Last 3 heartbeat entries ───────────'));
   if (lines.length === 0) {
@@ -335,7 +309,6 @@ ${bold('NOTES:')}
   `);
 };
 
-// Logic to handle empty calls or --help
 const [,, flag, arg] = process.argv;
 
 if (!flag || flag === '--help' || flag === '-h') {

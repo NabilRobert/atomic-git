@@ -3,14 +3,14 @@
   "version": "1.0.0",
   "description": "AI-powered atomic commit machine using SumoPod + RTK token-compressed git commands",
   "type": "module",
-  "main": "main.ts",
+  "main": "src/main.ts",
   "bin": {
-    "atomic": "bin.js"
+    "atomic": "bin/bin.js"
   },
   "scripts": {
-    "start": "tsx main.ts",
-    "dev": "nodemon --exec \"tsx main.ts\"",
-    "atomic": "tsx cli.ts"
+    "start": "tsx src/main.ts",
+    "dev": "nodemon --exec \"tsx src/main.ts\"",
+    "atomic": "tsx bin/cli.ts"
   },
   "repository": {
     "type": "git",
