@@ -56,6 +56,9 @@ Logic/TS: Focuses on type definitions and interface changes.
 
 List of Commands:
 
+in your terminal
+cd to where you have the package installed e.g. d:\Documents\stuff\atomic-git-commit\node_modules\.bin\atomic.cmd
+
 atomic --start [absolute-path] Start the daemon (defaults to .env)
 atomic --end Stop the daemon
 atomic --rdir [absolute-path] Restart with a new working directory
